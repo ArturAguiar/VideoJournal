@@ -1,0 +1,15 @@
+﻿<Application
+    x:Class="VideoJournal.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:VideoJournal"
+    xmlns:localData="using:VideoJournal.Data">
+
+    <Application.Resources>
+
+        <!-- Application-specific resources -->
+
+        <x:String x:Key="AppName">VideoJournal</x:String>
+
+    </Application.Resources>
+</Application>
