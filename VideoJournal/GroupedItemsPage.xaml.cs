@@ -13,6 +13,10 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Windows.Media.Capture;
+using Windows.Storage;
+
+using System.Diagnostics;
 
 // The Grouped Items Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234231
 
@@ -63,9 +67,8 @@ namespace VideoJournal
         /// session.  The state will be null the first time a page is visited.</param>
         private async void navigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
-            // TODO: Create an appropriate data model for your problem domain to replace the sample data
-            var sampleDataGroups = await SampleDataSource.GetGroupsAsync();
-            this.DefaultViewModel["Groups"] = sampleDataGroups;
+            var vlogDataGroups = await VlogDataSource.GetGroupsAsync();
+            this.DefaultViewModel["Groups"] = vlogDataGroups;
         }
 
         /// <summary>
@@ -80,7 +83,7 @@ namespace VideoJournal
 
             // Navigate to the appropriate destination page, configuring the new page
             // by passing required information as a navigation parameter
-            this.Frame.Navigate(typeof(GroupDetailPage), ((SampleDataGroup)group).UniqueId);
+            this.Frame.Navigate(typeof(GroupDetailPage), ((VlogDataGroup)group).UniqueId);
         }
 
         /// <summary>
@@ -93,8 +96,42 @@ namespace VideoJournal
         {
             // Navigate to the appropriate destination page, configuring the new page
             // by passing required information as a navigation parameter
-            var itemId = ((SampleDataItem)e.ClickedItem).UniqueId;
+            var itemId = ((VlogDataItem)e.ClickedItem).UniqueId;
             this.Frame.Navigate(typeof(ItemDetailPage), itemId);
+        }
+
+        public async void NewEntryButton_Click(object sender, RoutedEventArgs e)
+        {
+            var captureUI = new Windows.Media.Capture.CameraCaptureUI();
+            captureUI.VideoSettings.AllowTrimming = true;
+            captureUI.VideoSettings.Format = SettingsHelper.GetVideoFormat(); //Windows.Media.Capture.CameraCaptureUIVideoFormat.Wmv;
+            captureUI.VideoSettings.MaxResolution = Windows.Media.Capture.CameraCaptureUIMaxVideoResolution.HighestAvailable; //.StandardDefinition;
+            //captureUI.VideoSettings.MaxDurationInSeconds = 10;
+
+            StorageFile vlog = await captureUI.CaptureFileAsync(CameraCaptureUIMode.Video);
+
+            if (vlog != null)
+            {
+                StorageFolder destinationFolder = await SettingsHelper.GetDestinationFolder();
+
+                string filename = SettingsHelper.GenerateFilename();
+                int counter = 1;
+                bool movedSuccessfully = false;
+                
+                while (!movedSuccessfully)
+                {
+                    try
+                    {
+                        await vlog.MoveAsync(destinationFolder, filename, NameCollisionOption.FailIfExists);
+                        movedSuccessfully = true;
+                    }
+                    catch (System.Exception)
+                    {
+                        counter++;
+                        filename = SettingsHelper.GenerateFilename("#" + counter);
+                    }
+                }                
+            }
         }
 
         #region NavigationHelper registration
