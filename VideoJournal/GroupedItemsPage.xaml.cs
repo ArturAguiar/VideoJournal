@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Windows.ApplicationModel;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
@@ -52,6 +53,9 @@ namespace VideoJournal
             this.InitializeComponent();
             this.navigationHelper = new NavigationHelper(this);
             this.navigationHelper.LoadState += navigationHelper_LoadState;
+            this.navigationHelper.SaveState += navigationHelper_SaveState;
+
+            Application.Current.Suspending += (sender, args) => OnSuspending(sender, args);
         }
 
         /// <summary>
@@ -69,6 +73,37 @@ namespace VideoJournal
         {
             var vlogDataGroups = await VlogDataSource.GetGroupsAsync();
             this.DefaultViewModel["Groups"] = vlogDataGroups;
+
+            SetThumbnailImages();
+        }
+
+        private async void navigationHelper_SaveState(object sender, SaveStateEventArgs e)
+        {
+            Debug.WriteLine("Ran SaveState!");
+            await VlogDataSource.SaveToFile();
+        }
+
+        private async void OnSuspending(object sender, SuspendingEventArgs e)
+        {
+            var deferral = e.SuspendingOperation.GetDeferral();
+
+            Debug.WriteLine("Ran OnSuspending!");
+            await VlogDataSource.SaveToFile();
+
+            deferral.Complete();
+        }
+
+        private async void SetThumbnailImages()
+        {
+            StorageFolder tempFolder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
+
+            foreach (VlogDataGroup group in (IEnumerable<VlogDataGroup>)this.DefaultViewModel["Groups"])
+            {
+                foreach (VlogDataItem item in group.Items)
+                {
+                    item.ImagePath = await ApplicationHelper.GetThumbnailPath(item.Filename);
+                }
+            }
         }
 
         /// <summary>
@@ -104,7 +139,7 @@ namespace VideoJournal
         {
             var captureUI = new Windows.Media.Capture.CameraCaptureUI();
             captureUI.VideoSettings.AllowTrimming = true;
-            captureUI.VideoSettings.Format = SettingsHelper.GetVideoFormat(); //Windows.Media.Capture.CameraCaptureUIVideoFormat.Wmv;
+            captureUI.VideoSettings.Format = ApplicationHelper.GetVideoFormat(); //Windows.Media.Capture.CameraCaptureUIVideoFormat.Wmv;
             captureUI.VideoSettings.MaxResolution = Windows.Media.Capture.CameraCaptureUIMaxVideoResolution.HighestAvailable; //.StandardDefinition;
             //captureUI.VideoSettings.MaxDurationInSeconds = 10;
 
@@ -112,9 +147,9 @@ namespace VideoJournal
 
             if (vlog != null)
             {
-                StorageFolder destinationFolder = await SettingsHelper.GetDestinationFolder();
+                StorageFolder destinationFolder = await ApplicationHelper.GetDestinationFolder();
 
-                string filename = SettingsHelper.GenerateFilename();
+                string filename = ApplicationHelper.GenerateFilename();
                 int counter = 1;
                 bool movedSuccessfully = false;
                 
@@ -128,10 +163,29 @@ namespace VideoJournal
                     catch (System.Exception)
                     {
                         counter++;
-                        filename = SettingsHelper.GenerateFilename("#" + counter);
+                        filename = ApplicationHelper.GenerateFilename("_" + counter);
                     }
-                }                
+                }
+
+                string id = ApplicationHelper.GetCurrentDayID();
+                string title = ApplicationHelper.GetCurrentDayTitle();
+
+                if (counter > 1)
+                {
+                    id += "_" + counter;
+                    title += " #" + counter;
+                }
+
+                await VlogDataSource.AddItemAsync(id,                                           // uniqueId
+                                                  title,                                        // title
+                                                  "",                                           // subtitle
+                                                  ApplicationHelper.DEFAULT_VLOG_IMAGE_PATH,    // imagePath
+                                                  "",                                           // description
+                                                  filename,                                     // filename
+                                                  "");                                          // content
             }
+
+            
         }
 
         #region NavigationHelper registration

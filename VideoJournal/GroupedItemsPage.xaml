@@ -57,10 +57,10 @@
                 <DataTemplate>
                     <Grid HorizontalAlignment="Left" Width="250" Height="250">
                         <Border Background="{ThemeResource ListViewItemPlaceholderBackgroundThemeBrush}">
-                            <Image Source="{Binding ImagePath}" Stretch="UniformToFill" AutomationProperties.Name="{Binding Title}"/>
+                            <Image Source="{Binding ImagePath}" HorizontalAlignment="Center" Stretch="UniformToFill" AutomationProperties.Name="{Binding Title}"/>
                         </Border>
-                        <StackPanel VerticalAlignment="Bottom" Background="{ThemeResource ListViewItemOverlayBackgroundThemeBrush}">
-                            <TextBlock Text="{Binding Title}" Foreground="{ThemeResource ListViewItemOverlayForegroundThemeBrush}" Style="{StaticResource TitleTextBlockStyle}" Height="60" Margin="15,0,15,0"/>
+                        <StackPanel VerticalAlignment="Bottom" Background="{ThemeResource ListViewItemOverlayBackgroundThemeBrush}" Height="70">
+                            <TextBlock Text="{Binding Title}" Foreground="{ThemeResource ListViewItemOverlayForegroundThemeBrush}" Style="{StaticResource TitleTextBlockStyle}" Height="40" Margin="15,0,15,0"/>
                             <TextBlock Text="{Binding Subtitle}" Foreground="{ThemeResource ListViewItemOverlaySecondaryForegroundThemeBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="NoWrap" Margin="15,0,15,10"/>
                         </StackPanel>
                     </Grid>
