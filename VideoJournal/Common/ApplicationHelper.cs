@@ -74,10 +74,16 @@ namespace VideoJournal.Common
 
         public static async Task<StorageFile> GetVlogFile(string filename)
         {
-            //await Windows.Storage.KnownFolders.VideosLibrary
             StorageFolder folder = await GetDestinationFolder();
 
             return await folder.GetFileAsync(filename);
+        }
+
+        public static async Task<string> GetVlogFileAbsolutePath(string filename)
+        {
+            StorageFile file = await GetVlogFile(filename);
+
+            return file.Path;
         }
 
         public static async Task<string> GetThumbnailPath(string filename)

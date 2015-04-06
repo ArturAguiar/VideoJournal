@@ -18,7 +18,7 @@
     -->
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
         DataContext="{Binding Item}"
-        d:DataContext="{Binding Groups[0].Items[0], Source={d:DesignData Source=/DataModel/SampleData.json, Type=data:SampleDataSource}}">
+        d:DataContext="{Binding Groups[0].Items[0], Source={d:DesignData Source=/DataModel/VlogData.json, Type=data:VlogDataSource}}">
         <Grid.ChildrenTransitions>
             <TransitionCollection>
                 <EntranceThemeTransition/>
@@ -30,10 +30,10 @@
         </Grid.RowDefinitions>
 
         <!--
-            The preview container is fullscreen, so it spans both rows.
+            The preview container is fullscreen, so it spans all rows.
         -->
         <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="contentRegion">
-            <CaptureElement Name="capturePreview" />
+            <MediaElement x:Name="mediaElement" />
         </Grid>
 
         <!-- Back button and page title -->
@@ -50,7 +50,34 @@
                         AutomationProperties.ItemType="Navigation Button"/>
             <TextBlock x:Name="pageTitle" Text="{Binding Title}" Style="{StaticResource HeaderTextBlockStyle}" Grid.Column="1" 
                         IsHitTestVisible="false" TextWrapping="NoWrap" VerticalAlignment="Bottom" Margin="0,0,30,40"/>
-            <Button x:Name="photoButton" Content="Take Photo" Grid.Column="1" Margin="1111,57,0,45" Click="CaptureButton_Click" />
+        </Grid>
+        
+        <Grid Grid.Row="1" VerticalAlignment="Bottom">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="60" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="120" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Enable these controls when they can be used -->
+            <Button Grid.Column="1" x:Name="prevButton" Click="prevButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE100;" HorizontalAlignment="Center" IsEnabled="False"/>
+            <Button Grid.Column="2" x:Name="playPauseButton" Click="playPauseButton_Click" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" IsEnabled="False">
+                <SymbolIcon x:Name="playPauseButtonSymbol" Symbol="Play"/>
+            </Button>
+            <Button Grid.Column="3" x:Name="nextButton" Click="nextButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE101;" HorizontalAlignment="Center" IsEnabled="False"/>
+            
+            <Slider Grid.Column="4" x:Name="videoProgressSlider" AllowDrop="True" Minimum="0" Value="{Binding ElementName=mediaElement, Path=Position.TotalMilliseconds}" 
+                    ValueChanged="videoProgressSlider_ValueChanged"
+                    Padding="10 8 10 0" IsEnabled="False" />
+            
+            <TextBlock Grid.Column="5" x:Name="videoDurationTextBlock" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18" Text="12:34:56" Padding="5 0 0 0" />
+            
         </Grid>
     </Grid>
 </Page>

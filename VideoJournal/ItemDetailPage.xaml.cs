@@ -1,24 +1,14 @@
 ﻿using VideoJournal.Common;
 using VideoJournal.Data;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Windows.ApplicationModel;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.Media.Capture;
-using Windows.UI.Core;
+using Windows.Storage;
 
 using System.Diagnostics;
+using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Data;
 
 // The Item Detail Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234232
 
@@ -32,8 +22,10 @@ namespace VideoJournal
         private NavigationHelper navigationHelper;
         private ObservableDictionary defaultViewModel = new ObservableDictionary();
 
-        private MediaCapture captureManager;
-        private bool previewing = false;
+        private bool playing = false;
+        private TimeSpan videoTimeSpanDuration;
+
+        private BindingExpression sliderValueExpression;
 
         /// <summary>
         /// NavigationHelper is used on each page to aid in navigation and 
@@ -57,22 +49,13 @@ namespace VideoJournal
             this.InitializeComponent();
             this.navigationHelper = new NavigationHelper(this);
             this.navigationHelper.LoadState += navigationHelper_LoadState;
-            this.navigationHelper.SaveState += navigationHelper_SaveState;
 
-            Window.Current.VisibilityChanged += Current_VisibilityChanged;
+            mediaElement.MediaOpened += mediaElement_MediaOpened;
 
-            Application.Current.Resuming += (sender, o) => OnResuming(sender, o);
-            Application.Current.Suspending += (sender, args) => OnSuspending(sender, args);
-        }
-
-        public async void CaptureButton_Click(object sender, RoutedEventArgs e)
-        {
-            var camera = new CameraCaptureUI();
-            var result = await camera.CaptureFileAsync(CameraCaptureUIMode.Photo);
-            if (result != null)
-            {
-                Debug.WriteLine("Photo taken!");
-            }
+            videoProgressSlider.AddHandler(PointerPressedEvent, new PointerEventHandler(videoProgressSlider_PointerPressed), true);
+            videoProgressSlider.AddHandler(PointerReleasedEvent, new PointerEventHandler(videoProgressSlider_PointerReleased), true);
+            sliderValueExpression = videoProgressSlider.GetBindingExpression(Slider.ValueProperty);
+            videoProgressSlider.ThumbToolTipValueConverter = new TimeSpanFormatter();
         }
 
         /// <summary>
@@ -88,79 +71,38 @@ namespace VideoJournal
         /// session.  The state will be null the first time a page is visited.</param>
         private async void navigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
-            // TODO: Create an appropriate data model for your problem domain to replace the sample data
-            var item = await SampleDataSource.GetItemAsync((String)e.NavigationParameter);
+            // TODO: Create an appropriate data model for your problem domain to replace the vlog data
+            var item = await VlogDataSource.GetItemAsync((String)e.NavigationParameter);
             this.DefaultViewModel["Item"] = item;
 
-            await StartCapture();
+            StorageFile vlogFile = await ApplicationHelper.GetVlogFile(item.Filename);
+            var stream = await vlogFile.OpenAsync(Windows.Storage.FileAccessMode.Read);
 
-            //Debug.WriteLine("Loaded!");
-        }
-
-        private async void Current_VisibilityChanged(object sender, VisibilityChangedEventArgs e)
-        {
-            if (e.Visible)
+            if (vlogFile != null)
             {
-                await StartCapture();
-            }
-            else
-            {
-                await CleanupCaptureResources();
+                mediaElement.SetSource(stream, vlogFile.ContentType);
             }
         }
 
-        private async Task StartCapture()
+        void mediaElement_MediaOpened(object sender, RoutedEventArgs e)
         {
-            if (previewing)
-                return; // Already started.
+            PlayVideo();
+            videoProgressSlider.Maximum = mediaElement.NaturalDuration.TimeSpan.TotalMilliseconds;
 
-            //Debug.WriteLine("Start capture!");
-            captureManager = new MediaCapture();
-            await captureManager.InitializeAsync();
+            if (mediaElement.CanSeek)
+                videoProgressSlider.IsEnabled = true;
 
-            capturePreview.Source = captureManager;
-            capturePreview.FlowDirection = FlowDirection.RightToLeft;
-            await captureManager.StartPreviewAsync();
+            if (mediaElement.CanPause)
+                playPauseButton.IsEnabled = true;
 
-            previewing = true;
-        }
+            videoTimeSpanDuration = mediaElement.NaturalDuration.TimeSpan;
 
-        private async Task CleanupCaptureResources()
-        {
-            if (!previewing)
-                return; // Already cleaned up, or haven't started.
-
-            //Debug.WriteLine("Cleanup!");
-
-            await captureManager.StopPreviewAsync();
-            capturePreview.Source = null;
-            captureManager.Dispose();
-
-            previewing = false;
-        }
-
-        private async void navigationHelper_SaveState(object sender, SaveStateEventArgs e)
-        {
-            //Debug.WriteLine("SaveState ran!");
-            await CleanupCaptureResources();    
-        }
-
-        private async void OnResuming(object sender, object o)
-        {
-            //Debug.WriteLine("OnResuming ran!");
-            await CleanupCaptureResources();
-            await StartCapture();
-        }
-
-        private async void OnSuspending(object sender, SuspendingEventArgs e)
-        {
-            //Debug.WriteLine("OnSuspend ran!");
-            var deferral = e.SuspendingOperation.GetDeferral();
-
-            //cleanup camera resources
-            await CleanupCaptureResources();
-
-            deferral.Complete();
+            videoDurationTextBlock.Text = "";
+            if (videoTimeSpanDuration.Hours > 0)
+            {
+                videoDurationTextBlock.Text += videoTimeSpanDuration.Hours.ToString("D2") + ":";
+            }
+            videoDurationTextBlock.Text += String.Format("{0:D2}:{1:D2}", videoTimeSpanDuration.Minutes, videoTimeSpanDuration.Seconds);
         }
 
         #region NavigationHelper registration
@@ -186,5 +128,105 @@ namespace VideoJournal
         }
 
         #endregion
+
+        private void playPauseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (playing && mediaElement.CanPause)
+            {
+                PauseVideo();
+            }
+            else
+            {
+                PlayVideo();
+            }
+        }
+
+        private void prevButton_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: implement this
+        }
+
+        private void nextButton_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: implement this
+        }
+
+        private void PlayVideo()
+        {
+            if (playing)
+                return; //already playing
+
+            mediaElement.Play();
+            playing = true;
+            playPauseButtonSymbol.Symbol = Symbol.Pause;
+        }
+
+        private void PauseVideo()
+        {
+            if (!playing)
+                return; //already paused
+
+            mediaElement.Pause();
+            playing = false;
+            playPauseButtonSymbol.Symbol = Symbol.Play;
+        }
+
+        private void videoProgressSlider_PointerPressed(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            PauseVideo();
+            VideoSeekTo(videoProgressSlider.Value);
+        }
+
+        private void videoProgressSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            if (playing)
+                return; // the value was updated just due to the current time of the video increasing
+
+            // the value was changed by the user
+            VideoSeekTo(e.NewValue);
+        }
+
+        private void videoProgressSlider_PointerReleased(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            videoProgressSlider.SetBinding(Slider.ValueProperty, sliderValueExpression.ParentBinding);
+            PlayVideo();
+        }
+
+        private void VideoSeekTo(double milliseconds)
+        {
+            if (mediaElement.CanSeek)
+            {
+                TimeSpan seekTo = TimeSpan.FromMilliseconds(milliseconds);
+
+                mediaElement.Position = seekTo;
+            }
+        }        
+    }
+
+
+    public class TimeSpanFormatter : IValueConverter
+    {
+        // This converts the DateTime object to the string to display.
+        public object Convert(object value, Type targetType, object parameter, string lang)
+        {
+            // Retrieve the format string and use it to format the value.
+            TimeSpan timeSpan = TimeSpan.FromMilliseconds((double)value);
+
+            string converted = "";
+            if (timeSpan.Hours > 0)
+            {
+                converted += timeSpan.Hours.ToString("D2") + ":";
+            }
+            converted += string.Format("{0:D2}:{1:D2}", timeSpan.Minutes, timeSpan.Seconds);
+
+            return converted;
+        }
+
+        // No need to implement converting back on a one-way binding 
+        public object ConvertBack(object value, Type targetType,
+            object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
