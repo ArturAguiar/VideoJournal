@@ -7,6 +7,7 @@ using Windows.Media.Capture;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using System.Runtime.InteropServices.WindowsRuntime;
+using VideoJournal.Data;
 
 namespace VideoJournal.Common
 {
@@ -42,6 +43,11 @@ namespace VideoJournal.Common
         public static string GenerateFilename(string suffix = "")
         {
             return GetCurrentDayID() + suffix + GetExtensionForFormat();
+        }
+
+        public static string GetRandomGuid()
+        {
+            return Guid.NewGuid().ToString();
         }
 
         public static string GetCurrentDayID()
@@ -86,9 +92,9 @@ namespace VideoJournal.Common
             return file.Path;
         }
 
-        public static async Task<string> GetThumbnailPath(string filename)
+        public static async Task<string> GetThumbnailPath(VlogDataItem vlog)
         {
-            string thumbFilePath = filename + "-thumb.png"; // Extension?
+            string thumbFilePath = vlog.UniqueId + "-thumb.png";
 
             // Check if it is in the temp folder.
             StorageFolder tempFolder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
@@ -105,7 +111,7 @@ namespace VideoJournal.Common
                 // Thumbnail image file not found, create it.
             }
 
-            StorageFile vlogFile = await GetVlogFile(filename);
+            StorageFile vlogFile = await GetVlogFile(vlog.Filename);
 
             StorageItemThumbnail thumbnail = await vlogFile.GetThumbnailAsync(Windows.Storage.FileProperties.ThumbnailMode.VideosView, 190U);
 
@@ -118,5 +124,42 @@ namespace VideoJournal.Common
 
             return "ms-appdata:///temp/" + thumbFilePath;
         }
+
+        public static async Task DeleteVlogFile(string filename)
+        {
+            StorageFile vlogFile = null;
+
+            try
+            {
+                vlogFile = await GetVlogFile(filename);
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                // If the vlog file does not exist, i guess our work is done.
+                return;
+            }
+
+            await vlogFile.DeleteAsync(StorageDeleteOption.Default);
+        }
+
+        /*public static async Task DeleteThumbnailIfExists(string filename)
+        {
+            string thumbFilePath = filename + "-thumb.png";
+
+            // Check if it is in the temp folder.
+            StorageFolder tempFolder = Windows.Storage.ApplicationData.Current.TemporaryFolder;
+
+            StorageFile thumbFile;
+
+            try
+            {
+                thumbFile = await tempFolder.GetFileAsync(thumbFilePath);
+                await thumbFile.DeleteAsync(StorageDeleteOption.Default);
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                // Thumbnail image file not found. Do nothing.
+            }
+        }*/
     }
 }

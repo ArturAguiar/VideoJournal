@@ -33,13 +33,78 @@ namespace VideoJournal.Data
         }
 
         public string UniqueId { get; private set; }
-        public string Title { get; private set; }
-        public string Subtitle { get; private set; }
-        public string Description { get; private set; }
         public string Filename { get; private set; }
-        public string Content { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        #region Getters and Setters
+        private string title;
+        public string Title
+        {
+            get
+            {
+                return this.title;
+            }
+            set
+            {
+                if (this.title != value)
+                {
+                    this.title = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        private string subtitle;
+        public string Subtitle
+        {
+            get
+            {
+                return this.subtitle;
+            }
+            set
+            {
+                if (this.subtitle != value)
+                {
+                    this.subtitle = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        private string description;
+        public string Description
+        {
+            get
+            {
+                return this.description;
+            }
+            set
+            {
+                if (this.description != value)
+                {
+                    this.description = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        private string content;
+        public string Content
+        {
+            get
+            {
+                return this.content;
+            }
+            set
+            {
+                if (this.content != value)
+                {
+                    this.content = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
 
         private string imagePath;
         public string ImagePath
@@ -50,10 +115,14 @@ namespace VideoJournal.Data
             }
             set
             {
-                this.imagePath = value;
-                NotifyPropertyChanged();
+                if (this.imagePath != value)
+                {
+                    this.imagePath = value;
+                    NotifyPropertyChanged();
+                }
             }
         }
+        #endregion
 
         private void NotifyPropertyChanged(String propertyName = "")
         {
@@ -101,9 +170,32 @@ namespace VideoJournal.Data
             }
             set
             {
-                this.imagePath = value;
-                NotifyPropertyChanged();
+                if (this.imagePath != value)
+                {
+                    this.imagePath = value;
+                    NotifyPropertyChanged();
+                }
             }
+        }
+
+        public void AddVlog(VlogDataItem newVlog)
+        {
+            // Insert at the start to keep it ordered from old to new
+            this.Items.Insert(0, newVlog);
+            NotifyPropertyChanged();
+        }
+
+        public async Task DeleteVlog(VlogDataItem vlogToBeRemoved)
+        {
+            if (!this.Items.Contains(vlogToBeRemoved))
+                return;
+
+            //await ApplicationHelper.DeleteThumbnailIfExists(vlogToBeRemoved.Filename);
+
+            await ApplicationHelper.DeleteVlogFile(vlogToBeRemoved.Filename);
+
+            this.Items.Remove(vlogToBeRemoved);
+            NotifyPropertyChanged();
         }
 
         private void NotifyPropertyChanged(String propertyName = "")
@@ -132,7 +224,7 @@ namespace VideoJournal.Data
         private Uri DATA_FOLDER_URI = new Uri("ms-appdata:///local");
         private Uri DATA_URI = new Uri("ms-appdata:///local/" + DATA_FILENAME); //new Uri("ms-appx:///DataModel/VlogData.json");
 
-        private bool dataChangedSinceLastSave = false;
+        private static bool dataChangedSinceLastSave = false;
         private bool saving = false;
 
         private static VlogDataSource _vlogDataSource = new VlogDataSource();
@@ -146,11 +238,6 @@ namespace VideoJournal.Data
         public VlogDataSource()
         {
             this.Groups.CollectionChanged += Groups_CollectionChanged;
-        }
-
-        void Groups_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        {
-            dataChangedSinceLastSave = true;
         }
 
         public static async Task<IEnumerable<VlogDataGroup>> GetGroupsAsync()
@@ -181,7 +268,7 @@ namespace VideoJournal.Data
         public static async Task AddItemAsync(String uniqueId, String title, String subtitle, String imagePath, String description, String filename, String content)
         {
             VlogDataItem newItem = new VlogDataItem(uniqueId, title, subtitle, imagePath, description, filename, content);
-            newItem.ImagePath = await ApplicationHelper.GetThumbnailPath(filename);
+            newItem.ImagePath = await ApplicationHelper.GetThumbnailPath(newItem);
 
             string groupID = ApplicationHelper.GetCurrentMonthID();
 
@@ -195,14 +282,42 @@ namespace VideoJournal.Data
                                                            ApplicationHelper.GetCurrentMonthTitle() + " video logs",
                                                            ApplicationHelper.DEFAULT_GROUP_IMAGE_PATH,
                                                            "");
-                _vlogDataSource.Groups.Add(newGroup);
+                _vlogDataSource.Groups.Insert(0, newGroup);
                 group = newGroup;
             }
+
+            newItem.PropertyChanged += item_PropertyChanged;
 
             // Update group image to most recent video thumbnail
             group.ImagePath = newItem.ImagePath;
 
-            group.Items.Add(newItem);
+            group.AddVlog(newItem);
+        }
+
+        public static async Task DeleteItemAsync(VlogDataItem itemToDelete)
+        {
+            // Find the group in which the item is
+            VlogDataGroup group = null;
+            foreach (VlogDataGroup g in _vlogDataSource.Groups)
+            {
+                if (g.Items.Contains(itemToDelete))
+                {
+                    group = g;
+                    break;
+                }
+            }
+
+            if (group != null)
+            {
+                await group.DeleteVlog(itemToDelete);
+
+                if (group.Items.Count == 0)
+                {
+                    _vlogDataSource.Groups.Remove(group);
+                }
+
+                NotifyChange();
+            }
         }
 
         private async Task GetVlogDataAsync()
@@ -239,21 +354,39 @@ namespace VideoJournal.Data
                 foreach (JsonValue itemValue in groupObject["Items"].GetArray())
                 {
                     JsonObject itemObject = itemValue.GetObject();
-                    group.Items.Add(new VlogDataItem(itemObject["UniqueId"].GetString(),
-                                                     itemObject["Title"].GetString(),
-                                                     itemObject["Subtitle"].GetString(),
-                                                     itemObject["ImagePath"].GetString(),
-                                                     itemObject["Description"].GetString(),
-                                                     itemObject["Filename"].GetString(),
-                                                     itemObject["Content"].GetString()));
+                    VlogDataItem dataItem = new VlogDataItem(itemObject["UniqueId"].GetString(),
+                                                             itemObject["Title"].GetString(),
+                                                             itemObject["Subtitle"].GetString(),
+                                                             itemObject["ImagePath"].GetString(),
+                                                             itemObject["Description"].GetString(),
+                                                             itemObject["Filename"].GetString(),
+                                                             itemObject["Content"].GetString());
+                    dataItem.PropertyChanged += item_PropertyChanged;
+                    group.Items.Add(dataItem);
                 }
+
                 this.Groups.Add(group);
             }
         }
 
+        private static void item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            NotifyChange();
+        }
+
+        private static void Groups_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            NotifyChange();
+        }
+
+        private static void NotifyChange()
+        {
+            dataChangedSinceLastSave = true;
+        }
+
         public static async Task SaveToFile()
         {
-            if (!_vlogDataSource.dataChangedSinceLastSave || _vlogDataSource.saving)
+            if (!dataChangedSinceLastSave || _vlogDataSource.saving)
                 return; // nothing changed, so no need to save again.
 
             _vlogDataSource.saving = true;
@@ -266,10 +399,10 @@ namespace VideoJournal.Data
 
             await Windows.Storage.FileIO.WriteTextAsync(newDataFile, jsonString);
 
-            _vlogDataSource.dataChangedSinceLastSave = false;
+            dataChangedSinceLastSave = false;
             _vlogDataSource.saving = false;
 
-            Debug.WriteLine("Saved to: " + localFolder.Path + "/" + DATA_FILENAME);
+            Debug.WriteLine("Saved to: " + localFolder.Path + "\\" + DATA_FILENAME);
         }
     }
 }

@@ -5,10 +5,10 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using Windows.Storage;
-
-using System.Diagnostics;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Data;
+
+using System.Diagnostics;
 
 // The Item Detail Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234232
 
@@ -19,6 +19,8 @@ namespace VideoJournal
     /// </summary>
     public sealed partial class ItemDetailPage : Page
     {
+        private VlogDataItem item;
+
         private NavigationHelper navigationHelper;
         private ObservableDictionary defaultViewModel = new ObservableDictionary();
 
@@ -26,6 +28,13 @@ namespace VideoJournal
         private TimeSpan videoTimeSpanDuration;
 
         private BindingExpression sliderValueExpression;
+
+        private bool hideControls = false;
+        private TimeSpan hideAfterInactivityTimeSpan = TimeSpan.FromMilliseconds(3000.0);
+        private DispatcherTimer hideControlsTimer;
+        private bool pointerIsOverPlayerControls = false;
+
+        private bool hideSideHoverGrid = true;
 
         /// <summary>
         /// NavigationHelper is used on each page to aid in navigation and 
@@ -71,9 +80,13 @@ namespace VideoJournal
         /// session.  The state will be null the first time a page is visited.</param>
         private async void navigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
-            // TODO: Create an appropriate data model for your problem domain to replace the vlog data
-            var item = await VlogDataSource.GetItemAsync((String)e.NavigationParameter);
+            item = await VlogDataSource.GetItemAsync((String)e.NavigationParameter);
             this.DefaultViewModel["Item"] = item;
+
+            titleTextBox.Text = item.Title;
+            subtitleTextBox.Text = item.Subtitle;
+            descriptionTextBox.Text = item.Description;
+            contentTextBox.Text = item.Content;
 
             StorageFile vlogFile = await ApplicationHelper.GetVlogFile(item.Filename);
             var stream = await vlogFile.OpenAsync(Windows.Storage.FileAccessMode.Read);
@@ -103,6 +116,11 @@ namespace VideoJournal
                 videoDurationTextBlock.Text += videoTimeSpanDuration.Hours.ToString("D2") + ":";
             }
             videoDurationTextBlock.Text += String.Format("{0:D2}:{1:D2}", videoTimeSpanDuration.Minutes, videoTimeSpanDuration.Seconds);
+
+            hideControlsTimer = new DispatcherTimer();
+            hideControlsTimer.Tick += hideControlsTimer_Tick;
+            hideControlsTimer.Interval = hideAfterInactivityTimeSpan;
+            hideControlsTimer.Start();
         }
 
         #region NavigationHelper registration
@@ -129,6 +147,7 @@ namespace VideoJournal
 
         #endregion
 
+        #region Player Controls
         private void playPauseButton_Click(object sender, RoutedEventArgs e)
         {
             if (playing && mediaElement.CanPause)
@@ -171,6 +190,7 @@ namespace VideoJournal
             playPauseButtonSymbol.Symbol = Symbol.Play;
         }
 
+        #region Player Controls Visibility
         private void videoProgressSlider_PointerPressed(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             PauseVideo();
@@ -200,7 +220,111 @@ namespace VideoJournal
 
                 mediaElement.Position = seekTo;
             }
-        }        
+        }
+
+        private void pageRoot_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            // Show player controls
+
+            if (!hideControls)
+                return; //already showing
+
+            UnhideControls();
+            hideControlsTimer.Start(); // restart the timer
+        }
+
+        private void hideControlsTimer_Tick(object sender, object e)
+        {
+            // Hide player controls after mouse is inactive for a while
+
+            if (hideControls || pointerIsOverPlayerControls)
+                return; //already hidden or pointer is on the controls
+
+            HideControls();
+        }
+
+        private void videoControls_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            pointerIsOverPlayerControls = true;
+        }
+
+        private void videoControls_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            pointerIsOverPlayerControls = false;
+
+            hideControlsTimer.Stop();
+            hideControlsTimer.Start();
+        }
+
+        private void HideControls()
+        {
+            hideControlsTimer.Stop();
+            hideControlsDownStoryboard.Begin();
+            hidePageTitleStoryboard.Begin();
+            hideControls = true;
+        }
+
+        private void UnhideControls()
+        {
+            hideControlsTimer.Stop();
+            unhideControlsUpStoryboard.Begin();
+            unhidePageTitleStoryboard.Begin();
+            hideControls = false;
+        }
+        #endregion
+        #endregion
+        
+        private void moreInfoButton_Click(object sender, RoutedEventArgs e)
+        {
+            UnhideSideHoverGrid();
+        }
+
+        private void fullScreenGrid_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            HideSideHoverGrid();
+        }
+
+        private void saveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (titleTextBox.Text.Trim().Length == 0)
+            {
+                // Error: title is a required field
+                // TODO: error message
+                return;
+            }
+
+            item.Title = titleTextBox.Text.Trim();
+            item.Subtitle = subtitleTextBox.Text.Trim();
+            item.Description = descriptionTextBox.Text.Trim();
+            item.Content = contentTextBox.Text.Trim();
+
+            HideSideHoverGrid();
+        }
+
+        private void cancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            titleTextBox.Text = item.Title;
+            subtitleTextBox.Text = item.Subtitle;
+            descriptionTextBox.Text = item.Description;
+            contentTextBox.Text = item.Content;
+
+            HideSideHoverGrid();
+        }
+
+        private void HideSideHoverGrid()
+        {
+            if (hideSideHoverGrid)
+                return; // already hidden
+
+            hideSideHoverGridStoryboard.Begin();
+            hideSideHoverGrid = true;
+        }
+
+        private void UnhideSideHoverGrid()
+        {
+            unhideSideHoverGridStoryboard.Begin();
+            hideSideHoverGrid = false;
+        }
     }
 
 

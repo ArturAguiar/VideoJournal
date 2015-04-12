@@ -31,6 +31,9 @@ namespace VideoJournal
         private NavigationHelper navigationHelper;
         private ObservableDictionary defaultViewModel = new ObservableDictionary();
 
+        private List<VlogDataItem> selectedVlogs = new List<VlogDataItem>();
+        private bool deletingItems = false;
+
         /// <summary>
         /// NavigationHelper is used on each page to aid in navigation and 
         /// process lifetime management
@@ -72,6 +75,7 @@ namespace VideoJournal
         private async void navigationHelper_LoadState(object sender, LoadStateEventArgs e)
         {
             var vlogDataGroups = await VlogDataSource.GetGroupsAsync();
+            
             this.DefaultViewModel["Groups"] = vlogDataGroups;
 
             SetThumbnailImages();
@@ -101,7 +105,7 @@ namespace VideoJournal
             {
                 foreach (VlogDataItem item in group.Items)
                 {
-                    item.ImagePath = await ApplicationHelper.GetThumbnailPath(item.Filename);
+                    item.ImagePath = await ApplicationHelper.GetThumbnailPath(item);
                 }
             }
         }
@@ -135,7 +139,7 @@ namespace VideoJournal
             this.Frame.Navigate(typeof(ItemDetailPage), itemId);
         }
 
-        public async void NewEntryButton_Click(object sender, RoutedEventArgs e)
+        public async void newEntryButton_Click(object sender, RoutedEventArgs e)
         {
             var captureUI = new Windows.Media.Capture.CameraCaptureUI();
             captureUI.VideoSettings.AllowTrimming = true;
@@ -167,12 +171,12 @@ namespace VideoJournal
                     }
                 }
 
-                string id = ApplicationHelper.GetCurrentDayID();
+                string id = ApplicationHelper.GetRandomGuid(); //ApplicationHelper.GetCurrentDayID();
                 string title = ApplicationHelper.GetCurrentDayTitle();
 
                 if (counter > 1)
                 {
-                    id += "_" + counter;
+                    //id += "_" + counter;
                     title += " #" + counter;
                 }
 
@@ -210,5 +214,41 @@ namespace VideoJournal
         }
 
         #endregion
+
+        private async void deleteSelectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            deletingItems = true;
+
+            foreach (VlogDataItem vlogToDelete in this.selectedVlogs)
+            {
+                await VlogDataSource.DeleteItemAsync(vlogToDelete);
+            }
+
+            this.selectedVlogs.Clear();
+            deleteSelectionButton.Opacity = 0;
+
+            deletingItems = false;
+        }
+
+        private void itemGridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (deletingItems)
+                return; // just deleting items, no need to update the collection until it is done.
+
+            foreach (object objAdded in e.AddedItems)
+            {
+                selectedVlogs.Add(objAdded as VlogDataItem);
+            }
+
+            foreach (object objRemoved in e.RemovedItems)
+            {
+                selectedVlogs.Remove(objRemoved as VlogDataItem);
+            }
+
+            if (this.selectedVlogs.Count > 0)
+                deleteSelectionButton.Opacity = 1;
+            else
+                deleteSelectionButton.Opacity = 0;            
+        }
     }
 }

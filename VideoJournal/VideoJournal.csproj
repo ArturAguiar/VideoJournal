@@ -127,6 +127,8 @@
     <AppxManifest Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </AppxManifest>
+    <Content Include="Assets\FlowerPattern-1920x1080.png" />
+    <Content Include="Assets\Fonts\Niteclub.ttf" />
     <None Include="Common\ReadMe.txt" />
     <Content Include="DataModel\VlogData.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

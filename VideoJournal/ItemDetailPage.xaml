@@ -9,75 +9,128 @@
     xmlns:common="using:VideoJournal.Common"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    PointerMoved="pageRoot_PointerMoved">
+	<Page.Resources>
+		<Storyboard x:Name="hideControlsDownStoryboard">
+			<DoubleAnimation Duration="0:0:0.5" To="60" Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="videoControls" d:IsOptimized="True"/>
+		</Storyboard>
+		<Storyboard x:Name="unhideControlsUpStoryboard">
+			<DoubleAnimation Duration="0:0:0.5" To="0" Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="videoControls" d:IsOptimized="True"/>
+		</Storyboard>
+		<Storyboard x:Name="unhidePageTitleStoryboard">
+			<DoubleAnimation Duration="0:0:0.5" To="1" Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="pageTitle" d:IsOptimized="True"/>
+		</Storyboard>
+		<Storyboard x:Name="hidePageTitleStoryboard">
+			<DoubleAnimation Duration="0:0:0.5" To="0" Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="pageTitle" d:IsOptimized="True"/>
+		</Storyboard>
+		<Storyboard x:Name="hideSideHoverGridStoryboard">
+			<DoubleAnimation Duration="0:0:0.25" To="0" Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="sideHoverGrid" d:IsOptimized="True"/>
+		</Storyboard>
+		<Storyboard x:Name="unhideSideHoverGridStoryboard">
+			<DoubleAnimation Duration="0:0:0.25" To="-450" Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="sideHoverGrid" d:IsOptimized="True"/>
+		</Storyboard>
+	</Page.Resources>
 
-    <!--
-        This grid acts as a root panel for the page that defines two rows:
-        * Row 0 contains the back button and page title
-        * Row 1 contains the rest of the page layout
-    -->
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
-        DataContext="{Binding Item}"
-        d:DataContext="{Binding Groups[0].Items[0], Source={d:DesignData Source=/DataModel/VlogData.json, Type=data:VlogDataSource}}">
-        <Grid.ChildrenTransitions>
-            <TransitionCollection>
-                <EntranceThemeTransition/>
-            </TransitionCollection>
-        </Grid.ChildrenTransitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="140"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!--
-            The preview container is fullscreen, so it spans all rows.
-        -->
-        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="contentRegion">
-            <MediaElement x:Name="mediaElement" />
-        </Grid>
-
-        <!-- Back button and page title -->
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="120"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="backButton" Margin="39,59,39,0" Command="{Binding NavigationHelper.GoBackCommand, ElementName=pageRoot}"
-                        Style="{StaticResource NavigationBackButtonNormalStyle}"
-                        VerticalAlignment="Top"
-                        AutomationProperties.Name="Back"
-                        AutomationProperties.AutomationId="BackButton"
-                        AutomationProperties.ItemType="Navigation Button"/>
-            <TextBlock x:Name="pageTitle" Text="{Binding Title}" Style="{StaticResource HeaderTextBlockStyle}" Grid.Column="1" 
-                        IsHitTestVisible="false" TextWrapping="NoWrap" VerticalAlignment="Bottom" Margin="0,0,30,40"/>
-        </Grid>
+    <!-- Grid for the video and controls -->
+    <Canvas x:Name="canvas" DataContext="{Binding Item}"
+            d:DataContext="{Binding Groups[0].Items[0], Source={d:DesignData Source=/DataModel/VlogData.json, Type=data:VlogDataSource}}">
         
-        <Grid Grid.Row="1" VerticalAlignment="Bottom">
+        <Grid x:Name="fullScreenGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" 
+              Width="{Binding ActualWidth, ElementName=canvas}" Height="{Binding ActualHeight, ElementName=canvas}"
+              PointerReleased="fullScreenGrid_PointerReleased">
+            <Grid.ChildrenTransitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition/>
+                </TransitionCollection>
+            </Grid.ChildrenTransitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="60"/>
+                <RowDefinition Height="140"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="60" />
-                <ColumnDefinition Width="60" />
-                <ColumnDefinition Width="60" />
-                <ColumnDefinition Width="60" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="120" />
-            </Grid.ColumnDefinitions>
 
-            <!-- Enable these controls when they can be used -->
-            <Button Grid.Column="1" x:Name="prevButton" Click="prevButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE100;" HorizontalAlignment="Center" IsEnabled="False"/>
-            <Button Grid.Column="2" x:Name="playPauseButton" Click="playPauseButton_Click" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" IsEnabled="False">
-                <SymbolIcon x:Name="playPauseButtonSymbol" Symbol="Play"/>
-            </Button>
-            <Button Grid.Column="3" x:Name="nextButton" Click="nextButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE101;" HorizontalAlignment="Center" IsEnabled="False"/>
+            <!--
+                The preview container is fullscreen, so it spans all rows.
+            -->
+            <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="contentRegion">
+                <MediaElement x:Name="mediaElement" />
+            </Grid>
+
+            <!-- Back button and page title -->
+            <Grid x:Name="topControls">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="*"/>
+				    <ColumnDefinition Width="120"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="backButton" Margin="39,59,39,0" Command="{Binding NavigationHelper.GoBackCommand, ElementName=pageRoot}"
+                            Style="{StaticResource NavigationBackButtonNormalStyle}"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="Back"
+                            AutomationProperties.AutomationId="BackButton"
+                            AutomationProperties.ItemType="Navigation Button"/>
+                <TextBlock x:Name="pageTitle" Text="{Binding Title}" Style="{StaticResource HeaderTextBlockStyle}" Grid.Column="1" 
+                            IsHitTestVisible="false" TextWrapping="NoWrap" VerticalAlignment="Bottom" Margin="0,0,30,40" FontFamily="/Assets/Fonts/Niteclub.ttf#NiteClub" FontSize="80"/>
+			    <Button Grid.Column="2" x:Name="moreInfoButton" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                        Style="{StaticResource RoundButtonStyle}" BorderThickness="0" FontSize="14.667" Margin="0" Width="56"
+                        Click="moreInfoButton_Click">
+                    <SymbolIcon Symbol="List" VerticalAlignment="Center" Margin="-11,1,0,0" HorizontalAlignment="Center"/>
+                </Button>
+		    </Grid>
+        
+            <Grid x:Name="videoControls" Grid.Row="1" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5" 
+                  PointerEntered="videoControls_PointerEntered"
+                  PointerExited="videoControls_PointerExited">
+        	    <Grid.RenderTransform>
+        		    <CompositeTransform/>
+        	    </Grid.RenderTransform>
+        	    <Grid.Background>
+        		    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+        			    <GradientStop Color="#CC000000" Offset="1"/>
+        			    <GradientStop/>
+        		    </LinearGradientBrush>
+        	    </Grid.Background>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="60"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="120" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Enable these controls when they can be used -->
+                <Button Grid.Column="1" x:Name="prevButton" Click="prevButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE100;" HorizontalAlignment="Center" IsEnabled="False"/>
+                <Button Grid.Column="2" x:Name="playPauseButton" Click="playPauseButton_Click" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" IsEnabled="False">
+                    <SymbolIcon x:Name="playPauseButtonSymbol" Symbol="Play"/>
+                </Button>
+                <Button Grid.Column="3" x:Name="nextButton" Click="nextButton_Click" FontFamily="Segoe UI Symbol" Content="&#xE101;" HorizontalAlignment="Center" IsEnabled="False"/>
             
-            <Slider Grid.Column="4" x:Name="videoProgressSlider" AllowDrop="True" Minimum="0" Value="{Binding ElementName=mediaElement, Path=Position.TotalMilliseconds}" 
-                    ValueChanged="videoProgressSlider_ValueChanged"
-                    Padding="10 8 10 0" IsEnabled="False" />
+                <Slider Grid.Column="4" x:Name="videoProgressSlider" AllowDrop="True" Minimum="0" Value="{Binding ElementName=mediaElement, Path=Position.TotalMilliseconds}" 
+                        ValueChanged="videoProgressSlider_ValueChanged"
+                        Padding="10 8 10 0" IsEnabled="False" />
             
-            <TextBlock Grid.Column="5" x:Name="videoDurationTextBlock" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18" Text="12:34:56" Padding="5 0 0 0" />
+                <TextBlock Grid.Column="5" x:Name="videoDurationTextBlock" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18" Text="12:34:56" Padding="5 0 0 0" />
             
+            </Grid>
         </Grid>
-    </Grid>
+        <Grid x:Name="sideHoverGrid" Height="{Binding ActualHeight, ElementName=canvas}" Canvas.Left="1366" Width="450" Background="#FF383838" RenderTransformOrigin="0.5,0.5">
+        	<Grid.RenderTransform>
+        		<CompositeTransform/>
+        	</Grid.RenderTransform>
+        	<TextBlock x:Name="titleLabel" HorizontalAlignment="Left" Margin="45,27,0,0" TextWrapping="Wrap" Text="Title" VerticalAlignment="Top" FontSize="14.667" Width="360"/>
+        	<TextBox x:Name="titleTextBox" HorizontalAlignment="Center" Height="28" Margin="45,50,45,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="360" Background="#FF555555" Foreground="White" BorderBrush="#FFAEAEAE" SelectionHighlightColor="#FF959595"/>
+            <TextBlock x:Name="subtitleLabel" HorizontalAlignment="Left" Margin="45,103,0,0" TextWrapping="Wrap" Text="Subtitle" VerticalAlignment="Top" FontSize="14.667" Width="360" Height="18" />
+        	<TextBox x:Name="subtitleTextBox" HorizontalAlignment="Center" Height="28" Margin="45,126,45,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="360" Background="#FF555555" Foreground="White" BorderBrush="#FFAEAEAE" PlaceholderText="" SelectionHighlightColor="#FF959595"/>
+        	<TextBlock x:Name="descriptionLabel" HorizontalAlignment="Left" Margin="45,180,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14.667" Width="360" Height="18" Text="Description"/>
+        	<TextBox x:Name="descriptionTextBox" HorizontalAlignment="Center" Height="109" Margin="45,203,45,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="360" Background="#FF555555" Foreground="White" BorderBrush="#FFAEAEAE" SelectionHighlightColor="#FF959595"/>
+        	<TextBlock x:Name="contentLabel" HorizontalAlignment="Left" Margin="45,338,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14.667" Width="360" Height="18" Text="Content"/>
+        	<TextBox x:Name="contentTextBox" HorizontalAlignment="Center" Height="329" Margin="45,361,45,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="360" Background="#FF555555" Foreground="White" BorderBrush="#FFAEAEAE" SelectionHighlightColor="#FF959595"/>
+        	<Button x:Name="saveButton" Content="Save" HorizontalAlignment="Left" Margin="244,709,0,0" VerticalAlignment="Top" Click="saveButton_Click"/>
+        	<Button x:Name="cancelButton" Content="Cancel" HorizontalAlignment="Left" Margin="330,709,0,0" VerticalAlignment="Top" Click="cancelButton_Click"/>
+        </Grid>
+    </Canvas>
 </Page>

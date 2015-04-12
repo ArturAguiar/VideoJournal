@@ -30,7 +30,10 @@
         * Row 0 contains the back button and page title
         * Row 1 contains the rest of the page layout
     -->
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid>
+    	<Grid.Background>
+    		<ImageBrush Stretch="UniformToFill" ImageSource="Assets/FlowerPattern-1920x1080.png"/>
+    	</Grid.Background>
         <Grid.ChildrenTransitions>
             <TransitionCollection>
                 <EntranceThemeTransition/>
@@ -49,19 +52,20 @@
             Grid.RowSpan="2"
             Padding="116,137,40,46"
             ItemsSource="{Binding Source={StaticResource groupedItemsViewSource}}"
-            SelectionMode="None"
+            SelectionMode="Multiple"
+            SelectionChanged="itemGridView_SelectionChanged"
             IsSwipeEnabled="false"
             IsItemClickEnabled="True"
             ItemClick="ItemView_ItemClick">
             <GridView.ItemTemplate>
                 <DataTemplate>
-                    <Grid HorizontalAlignment="Left" Width="250" Height="250">
+                    <Grid HorizontalAlignment="Left" Width="250" Height="170" ToolTipService.ToolTip="{Binding Subtitle}">
                         <Border Background="{ThemeResource ListViewItemPlaceholderBackgroundThemeBrush}">
                             <Image Source="{Binding ImagePath}" HorizontalAlignment="Center" Stretch="UniformToFill" AutomationProperties.Name="{Binding Title}"/>
                         </Border>
-                        <StackPanel VerticalAlignment="Bottom" Background="{ThemeResource ListViewItemOverlayBackgroundThemeBrush}" Height="70">
-                            <TextBlock Text="{Binding Title}" Foreground="{ThemeResource ListViewItemOverlayForegroundThemeBrush}" Style="{StaticResource TitleTextBlockStyle}" Height="40" Margin="15,0,15,0"/>
-                            <TextBlock Text="{Binding Subtitle}" Foreground="{ThemeResource ListViewItemOverlaySecondaryForegroundThemeBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="NoWrap" Margin="15,0,15,10"/>
+                        <StackPanel VerticalAlignment="Bottom" Background="{ThemeResource ListViewItemOverlayBackgroundThemeBrush}" Height="25">
+                            <TextBlock Text="{Binding Title}" Foreground="{ThemeResource ListViewItemOverlayForegroundThemeBrush}" Style="{StaticResource TitleTextBlockStyle}" Height="25" Margin="10,-3,10,0" FontSize="14" ToolTipService.ToolTip="{Binding Title}"/>
+                            <!--<TextBlock Text="{Binding Subtitle}" Foreground="{ThemeResource ListViewItemOverlaySecondaryForegroundThemeBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="NoWrap" Margin="15,0,15,10"/>-->
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
@@ -81,7 +85,7 @@
                                     Click="Header_Click"
                                     Style="{StaticResource TextBlockButtonStyle}" >
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Title}" Margin="0,-11,10,10" Style="{StaticResource SubheaderTextBlockStyle}" TextWrapping="NoWrap" />
+                                        <TextBlock Text="{Binding Title}" Margin="0,-11,10,10" Style="{StaticResource SubheaderTextBlockStyle}" TextWrapping="NoWrap" FontFamily="/Assets/Fonts/Niteclub.ttf#NiteClub" FontSize="30"/>
                                         <TextBlock Text="{StaticResource ChevronGlyph}" FontFamily="Segoe UI Symbol" Margin="0,-11,0,10" Style="{StaticResource SubheaderTextBlockStyle}" TextWrapping="NoWrap" />
                                     </StackPanel>
                                 </Button>
@@ -97,6 +101,8 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="120"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="90"/>
+                <ColumnDefinition Width="90"/>
             </Grid.ColumnDefinitions>
             <Button x:Name="backButton" Margin="39,59,39,0" Command="{Binding NavigationHelper.GoBackCommand, ElementName=pageRoot}"
                         Style="{StaticResource NavigationBackButtonNormalStyle}"
@@ -105,8 +111,19 @@
                         AutomationProperties.AutomationId="BackButton"
                         AutomationProperties.ItemType="Navigation Button"/>
             <TextBlock x:Name="pageTitle" Text="{StaticResource AppName}" Style="{StaticResource HeaderTextBlockStyle}" Grid.Column="1" 
-                        IsHitTestVisible="false" TextWrapping="NoWrap" VerticalAlignment="Bottom" Margin="0,0,30,40"/>
-            <Button x:Name="photoButton" Content="New Entry" Grid.Column="1" Margin="1111,57,0,45" Click="NewEntryButton_Click" />
+                       IsHitTestVisible="false" TextWrapping="NoWrap" VerticalAlignment="Bottom" Margin="0,0,30,40"
+                       FontFamily="/Assets/Fonts/Niteclub.ttf#NiteClub" FontSize="80" Foreground="White" FontWeight="Normal"/>
+            <!--<Button x:Name="photoButton" Content="New Entry" Grid.Column="2" Click="NewEntryButton_Click" HorizontalAlignment="Center" />-->
+            <Button Grid.Column="3" x:Name="newEntryButton" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                        Style="{StaticResource RoundButtonStyle}" BorderThickness="0" FontSize="14.667" Margin="0" Width="56"
+                        Click="newEntryButton_Click">
+                <SymbolIcon Symbol="Add" VerticalAlignment="Center" Margin="-11,1,0,0" HorizontalAlignment="Center"/>
+            </Button>
+            <Button Grid.Column="2" x:Name="deleteSelectionButton" FontFamily="Segoe UI Symbol" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                        Style="{StaticResource RoundButtonStyle}" BorderThickness="0" FontSize="14.667" Margin="0" Width="56"
+                        Click="deleteSelectionButton_Click" Opacity="0">
+                <SymbolIcon Symbol="Delete" VerticalAlignment="Center" Margin="-11,1,0,0" HorizontalAlignment="Center"/>
+            </Button>
         </Grid>
     </Grid>
 </Page>
